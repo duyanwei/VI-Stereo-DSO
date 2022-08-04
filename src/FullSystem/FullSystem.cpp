@@ -189,6 +189,7 @@ FullSystem::FullSystem()
 	maxIdJetVisDebug = -1;
 	minIdJetVisTracker = -1;
 	maxIdJetVisTracker = -1;
+    est_poses_.clear();
 }
 
 FullSystem::~FullSystem()
@@ -258,13 +259,13 @@ void FullSystem::setGammaFunction(float* BInv)
 
 
 
-void FullSystem::printResult(std::string file)
+void FullSystem::printResult(std::string prefix)
 {
 	boost::unique_lock<boost::mutex> lock(trackMutex);
 	boost::unique_lock<boost::mutex> crlock(shellPoseMutex);
 
 	std::ofstream myfile;
-	myfile.open (file.c_str());
+	myfile.open (prefix + "_KeyFrameTrajectory.txt");
 	myfile << std::setprecision(15);
 
 	for(FrameShell* s : allFrameHistory)
@@ -281,8 +282,19 @@ void FullSystem::printResult(std::string file)
 			" " << s->camToWorld.so3().unit_quaternion().w() << "\n";
 	}
 	myfile.close();
-}
 
+	myfile.open (prefix + "_CameraTrajectory_tracking.txt");
+	myfile << std::setprecision(15);
+    for (const auto& v : est_poses_)
+    {
+        const Vec4 q = Eigen::Quaterniond(v.T.rotationMatrix()).coeffs();
+        const Vec3 t = v.T.translation();
+        myfile << v.t << " "
+               << t(0) << " " << t(1) << " " << t(2) << " " 
+               << q(0) << " " << q(1) << " " << q(2) << " " << q(3) << std::endl;
+    }
+    myfile.close();
+}
 
 Vec4 FullSystem::trackNewCoarse(FrameHessian* fh)
 {
@@ -1115,14 +1127,14 @@ void FullSystem::addActiveFrame( ImageAndExposure* image, ImageAndExposure* imag
 			fh->shell->poseValid = false;
 			delete fh;
 		}
-		std::ofstream f1;
-		std::string dsoposefile = "./data/"+savefile_tail+".txt";
-		f1.open(dsoposefile,std::ios::out);
-		f1.close();
-		std::ofstream f2;
-		std::string gtfile = "./data/"+savefile_tail+"_gt.txt";
-		f2.open(gtfile,std::ios::out);
-		f2.close();
+		// std::ofstream f1;
+		// std::string dsoposefile = "./data/"+savefile_tail+".txt";
+		// f1.open(dsoposefile,std::ios::out);
+		// f1.close();
+		// std::ofstream f2;
+		// std::string gtfile = "./data/"+savefile_tail+"_gt.txt";
+		// f2.open(gtfile,std::ios::out);
+		// f2.close();
 		return;
 	}
 	else	// do front-end operation.
@@ -1203,7 +1215,8 @@ void FullSystem::addActiveFrame( ImageAndExposure* image, ImageAndExposure* imag
 		
 // 		Sophus::Matrix4d T = shell->camToWorld.matrix();
 		Sophus::Matrix4d T = T_WD.matrix()*shell->camToWorld.matrix()*T_WD.inverse().matrix();
-		savetrajectory_tum(SE3(T),run_time);
+        est_poses_.emplace_back(run_time, SE3(T));
+		// savetrajectory_tum(SE3(T),run_time);
 // 		savetrajectory(T);
 		
 		return;

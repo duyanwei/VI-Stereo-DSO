@@ -779,6 +779,7 @@ int main( int argc, char** argv )
         std::vector<double> timesToPlayAt;
 	std::vector<int> idsToPlayRight;		// right images
         std::vector<double> timesToPlayAtRight;
+        size_t good_frame_count = 0;
         for(int i=lstart;i>= 0 && i< reader->getNumImages() && linc*i < linc*lend;i+=linc)
         {
             idsToPlay.push_back(i);
@@ -828,7 +829,7 @@ int main( int argc, char** argv )
         double sInitializerOffset=0;
 
 
-        for(int ii=30;ii<(int)idsToPlay.size(); ii++)
+        for(int ii=0;ii<(int)idsToPlay.size(); ii++)
         {
             if(!fullSystem->initialized)	// if not initialized: reset start time.
             {
@@ -896,8 +897,12 @@ int main( int argc, char** argv )
 // 		imu_weight_tracker = 1;
 // 	    }
 
-            if(!skipFrame) fullSystem->addActiveFrame(img, img_right, i);
-			  
+            if(!skipFrame)
+            {
+                fullSystem->addActiveFrame(img, img_right, i);
+                good_frame_count += 1;
+            }
+
 // 	    IplImage* src = 0;
 // 	    cvShowImage("camera",src);
 // 	    cv::waitKey(-1);
@@ -941,7 +946,7 @@ int main( int argc, char** argv )
         gettimeofday(&tv_end, NULL);
 
 
-        fullSystem->printResult("result.txt");
+        fullSystem->printResult(savefile_tail);
 
 
         int numFramesProcessed = abs(idsToPlay[0]-idsToPlay.back());
@@ -971,6 +976,17 @@ int main( int argc, char** argv )
             tmlog.close();
         }
 
+        {
+            std::ofstream myfile(savefile_tail + "_stats.txt");
+            myfile << reader->getNumImages() << " " << good_frame_count
+                   << std::endl;
+            myfile.close();
+        }
+
+        if (viewer)
+        {
+            viewer->close();
+        }
     });
 
 

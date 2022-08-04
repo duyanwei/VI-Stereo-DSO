@@ -12,6 +12,8 @@ set(EXECUTABLE_OUTPUT_PATH bin)
 set(LIBRARY_OUTPUT_PATH lib)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+list(APPEND CMAKE_PREFIX_PATH $ENV{SLAM_THIRD_PARTY_ROOT})
+
 # required libraries
 find_package(SuiteParse REQUIRED)
 find_package(Eigen3 REQUIRED)
