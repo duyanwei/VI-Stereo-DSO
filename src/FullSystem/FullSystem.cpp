@@ -274,12 +274,12 @@ void FullSystem::printResult(std::string prefix)
 
 		if(setting_onlyLogKFPoses && s->marginalizedAt == s->id) continue;
 
-		myfile << s->timestamp <<
-			" " << s->camToWorld.translation().transpose()<<
-			" " << s->camToWorld.so3().unit_quaternion().x()<<
-			" " << s->camToWorld.so3().unit_quaternion().y()<<
-			" " << s->camToWorld.so3().unit_quaternion().z()<<
-			" " << s->camToWorld.so3().unit_quaternion().w() << "\n";
+        const Vec3 trans = s->camToWorld.translation().transpose();
+        const Vec4 quat  = s->camToWorld.so3().unit_quaternion().coeffs();
+
+        myfile << s->timestamp << " "
+               << trans(0) << " " << trans(1) << " " << trans(2) << " "
+               << quat(0) << " " << quat(1) << " " << quat(2) << " " << quat(3) << "\n"; 
 	}
 	myfile.close();
 
@@ -1356,6 +1356,7 @@ void FullSystem::deliverTrackedFrame(FrameHessian* fh, FrameHessian* fh_right, b
 	{
 		boost::unique_lock<boost::mutex> lock(trackMapSyncMutex);
 		unmappedTrackedFrames.push_back(fh);
+		unmappedTrackedFrames_right.push_back(fh_right);
 		if(needKF) needNewKFAfter=fh->shell->trackingRef->id;
 		trackedFrameSignal.notify_all();
 
@@ -1416,7 +1417,10 @@ void FullSystem::mappingLoop()
 					fh->shell->camToWorld = fh->shell->trackingRef->camToWorld * fh->shell->camToTrackingRef;
 					fh->setEvalPT_scaled(fh->shell->camToWorld.inverse(),fh->shell->aff_g2l);
 				}
+				FrameHessian* fh_right = unmappedTrackedFrames_right.front();
+				unmappedTrackedFrames_right.pop_front();
 				delete fh;
+                delete fh_right;
 			}
 
 		}

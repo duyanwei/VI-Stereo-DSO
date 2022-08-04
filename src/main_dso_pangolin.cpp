@@ -22,7 +22,7 @@
 */
 
 
-
+#include <numeric>
 #include <thread>
 #include <locale.h>
 #include <signal.h>
@@ -51,6 +51,7 @@
 #include "IOWrapper/OutputWrapper/SampleOutputWrapper.h"
 #include <opencv2/highgui/highgui.hpp>
 
+#include "util/timer.h"
 
 std::string vignette = "";
 std::string gammaCalib = "";
@@ -73,6 +74,7 @@ bool prefetch = false;
 float playbackSpeed=0;	// 0 for linearize (play as fast as possible, while sequentializing tracking & mapping). otherwise, factor on timestamps.
 bool preload=false;
 bool useSampleOutput=false;
+int glog_loglevel = 0;
 
 
 int mode=0;
@@ -417,6 +419,13 @@ void parseArgument(char* arg)
 		return;
 	}
 
+	if(1==sscanf(arg,"glog_loglevel=%f",&foption))
+	{
+		glog_loglevel = foption;
+		printf("GLOG_LOGLEVEL %d!\n", glog_loglevel);
+		return;
+	}
+
 	if(1==sscanf(arg,"save=%d",&option))
 	{
 		if(option==1)
@@ -664,7 +673,10 @@ void getPicTimestamp(){
 
 int main( int argc, char** argv )
 {
-	//setlocale(LC_ALL, "");
+    FLAGS_minloglevel     = glog_loglevel;
+    google::InitGoogleLogging(argv[0]);
+
+    //setlocale(LC_ALL, "");
 	imu_weight = 3;
 	imu_weight_tracker = 0.1;
 	stereo_weight = 2;
@@ -750,7 +762,7 @@ int main( int argc, char** argv )
 
 	FullSystem* fullSystem = new FullSystem();
 	fullSystem->setGammaFunction(reader->getPhotometricGamma());
-	fullSystem->linearizeOperation = (playbackSpeed==0);
+	// fullSystem->linearizeOperation = (playbackSpeed==0);
 
 
 
@@ -779,6 +791,8 @@ int main( int argc, char** argv )
         std::vector<double> timesToPlayAt;
 	std::vector<int> idsToPlayRight;		// right images
         std::vector<double> timesToPlayAtRight;
+        std::vector<double> track_timing;
+        slam_utility::stats::TicTocTimer tic_toc_timer;
         size_t good_frame_count = 0;
         for(int i=lstart;i>= 0 && i< reader->getNumImages() && linc*i < linc*lend;i+=linc)
         {
@@ -899,7 +913,9 @@ int main( int argc, char** argv )
 
             if(!skipFrame)
             {
+                tic_toc_timer.tic();
                 fullSystem->addActiveFrame(img, img_right, i);
+                track_timing.emplace_back(tic_toc_timer.toc());
                 good_frame_count += 1;
             }
 
@@ -923,7 +939,7 @@ int main( int argc, char** argv )
 
                     fullSystem = new FullSystem();
                     fullSystem->setGammaFunction(reader->getPhotometricGamma());
-                    fullSystem->linearizeOperation = (playbackSpeed==0);
+                    // fullSystem->linearizeOperation = (playbackSpeed==0);
 
 
                     fullSystem->outputWrapper = wraps;
@@ -978,8 +994,17 @@ int main( int argc, char** argv )
 
         {
             std::ofstream myfile(savefile_tail + "_stats.txt");
-            myfile << reader->getNumImages() << " " << good_frame_count
-                   << std::endl;
+            myfile << reader->getNumImages() << " "
+                   << good_frame_count << " "
+                   << good_frame_count / (float) reader->getNumImages() << " ";
+
+            std::sort(track_timing.begin(), track_timing.end());
+            const double s =
+                std::accumulate(track_timing.begin(), track_timing.end(), 0.0);
+            myfile << track_timing.at(good_frame_count / 2) << " "
+                   << s / good_frame_count << " "
+                   << track_timing.front() << " "
+                   << track_timing.back() << std::endl;
             myfile.close();
         }
 

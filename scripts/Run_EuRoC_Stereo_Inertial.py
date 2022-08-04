@@ -24,12 +24,12 @@ SeqNameList = [
     'V2_01_easy', 'V2_02_medium', 'V2_03_difficult']
 RESULT_ROOT = os.path.join(
     os.environ['SLAM_RESULT'], 'VI-Stereo-DSO/EuRoC/')
-NumRepeating = 10
+NumRepeating = 1
 SleepTime = 5  # 10 # 25 # second
 # FeaturePool = [500]
-SpeedPool = [1.0, 2.0, 3.0] # , 4.0, 5.0] # x
+SpeedPool = [4.0] # , 2.0, 3.0] # , 4.0, 5.0] # x
 EnableViewer = 1
-EnableLogging = 0
+EnableLogging = 1
 VI_SDSO_PATH = os.path.join(os.environ['SLAM_OPENSOURCE'], 'direct/VI-Stereo-DSO')
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -89,11 +89,11 @@ for speed in SpeedPool:
                     ' imudata=' + os.path.join(file_data, 'mav0/imu0/data.csv') + \
                     ' pic_timestamp=' + os.path.join(file_data, 'mav0/cam0/data.csv') + \
                     ' pic_timestamp1=' + os.path.join(file_data, 'mav0/cam1/data.csv') + \
-                    ' preset=0 mode=1 nomt=1 use_stereo=1' + \
-                    ' speed=0' + \
+                    ' preset=0 mode=1 nomt=1 use_stereo=1 glog_loglevl=1' + \
+                    ' speed=' + speed_str + \
                     ' nogui=' + str(0 if EnableViewer else 1) + \
-                    ' quite=0' + \
-                    ' imu_weight=6 imu_weight_tracker=0.6 stereo_weight=0.5' + \
+                    ' quite=1' + \
+                    ' imu_weight=10 imu_weight_tracker=0.6 stereo_weight=0.5' + \
                     ' savefile_tail=' + file_traj + \
                     ' ' + file_log
 
